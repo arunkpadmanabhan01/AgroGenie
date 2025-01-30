@@ -1,9 +1,8 @@
 {
-  "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
+  "/not-found": "app/not-found.js",
+  "/auth/signup/page": "app/auth/signup/page.js",
   "/auth/signin/page": "app/auth/signin/page.js",
-  "/dashboard/crop-prediction/page": "app/dashboard/crop-prediction/page.js",
-  "/dashboard/fertilizer-recommendation/page": "app/dashboard/fertilizer-recommendation/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/api/auth/google/route": "app/api/auth/google/route.js"
 }
