@@ -1,14 +1,24 @@
+import { DefaultSession } from 'next-auth'
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { compare } from 'bcryptjs'
-import clientPromise from '@/lib/mongodb'
+import connectDB from '@/app/lib/db'
+import User from '@/app/models/User'
+import bcrypt from 'bcryptjs'
+
+declare module 'next-auth' {
+  interface Session extends DefaultSession {
+    user?: {
+      id: string
+    } & DefaultSession['user']
+  }
+}
 
 const handler = NextAuth({
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
     }),
     CredentialsProvider({
       name: 'Credentials',
@@ -18,20 +28,20 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Missing credentials')
+          throw new Error('Please provide both email and password')
         }
 
-        const client = await clientPromise
-        const db = client.db("agropredict")
-        const user = await db.collection('users').findOne({ email: credentials.email })
-
-        if (!user) {
-          throw new Error('No user found')
+        await connectDB()
+        
+        const user = await User.findOne({ email: credentials.email })
+        
+        if (!user || !user.password) {
+          throw new Error('No user found with this email')
         }
 
-        const isValid = await compare(credentials.password, user.password)
-
-        if (!isValid) {
+        const isPasswordMatch = await user.comparePassword(credentials.password)
+        
+        if (!isPasswordMatch) {
           throw new Error('Invalid password')
         }
 
@@ -41,7 +51,7 @@ const handler = NextAuth({
           name: user.name,
         }
       }
-    })
+    }),
   ],
   pages: {
     signIn: '/auth/signin',
@@ -50,20 +60,45 @@ const handler = NextAuth({
     strategy: 'jwt',
   },
   callbacks: {
-    async jwt({ token, user, account }) {
-      if (account && user) {
-        return {
-          ...token,
-          userId: user.id,
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        try {
+          await connectDB()
+          
+          const existingUser = await User.findOne({ email: user.email })
+          
+          if (!existingUser) {
+            await User.create({
+              name: user.name,
+              email: user.email,
+              googleId: account.providerAccountId,
+            })
+          } else {
+            // Update googleId if it doesn't exist
+            if (!existingUser.googleId) {
+              await User.findByIdAndUpdate(existingUser._id, {
+                googleId: account.providerAccountId,
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Error during Google sign in:', error)
+          return false
         }
       }
-      return token
+      return true
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.userId as string
+      if (session.user) {
+        session.user.id = token.sub ?? ''
       }
       return session
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id
+      }
+      return token
     }
   }
 })

@@ -1,25 +1,20 @@
-import { getToken } from 'next-auth/jwt'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { withAuth } from 'next-auth/middleware';
+import { NextResponse } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
-  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
-
-  if (isAuthPage) {
-    if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    return NextResponse.next()
+export default withAuth(
+  function middleware(req) {
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
+    pages: {
+      signIn: '/auth/signin',
+    },
   }
-
-  if (!token && request.nextUrl.pathname !== '/') {
-    return NextResponse.redirect(new URL('/auth/signin', request.url))
-  }
-
-  return NextResponse.next()
-}
+);
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
-}
+  matcher: ['/dashboard/:path*'],
+};

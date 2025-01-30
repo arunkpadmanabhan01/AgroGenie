@@ -1,47 +1,41 @@
 import { NextResponse } from 'next/server'
-import { hash } from 'bcryptjs'
-import clientPromise from '@/lib/mongodb'
+import bcrypt from 'bcryptjs'
+import connectDB from '@/app/lib/db'
+import User from '@/app/models/User'
 
 export async function POST(req: Request) {
   try {
     const { name, email, password } = await req.json()
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      )
-    }
-
-    const client = await clientPromise
-    const db = client.db("agropredict")
+    await connectDB()
 
     // Check if user already exists
-    const existingUser = await db.collection('users').findOne({ email })
+    const existingUser = await User.findOne({ email })
     if (existingUser) {
       return NextResponse.json(
-        { message: "User already exists" },
+        { message: 'User already exists' },
         { status: 400 }
       )
     }
 
-    const hashedPassword = await hash(password, 12)
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12)
 
-    const result = await db.collection('users').insertOne({
+    // Create new user
+    const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      createdAt: new Date(),
     })
 
     return NextResponse.json(
-      { message: "User created successfully", userId: result.insertedId },
+      { message: 'User created successfully' },
       { status: 201 }
     )
   } catch (error) {
-    console.error('Registration error:', error)
+    console.error('Signup error:', error)
     return NextResponse.json(
-      { message: "Error creating user" },
+      { message: 'An error occurred during signup' },
       { status: 500 }
     )
   }

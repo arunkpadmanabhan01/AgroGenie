@@ -1,4 +1,4 @@
-// File: /home/arun/Downloads/project/app/auth/signin/page.tsx
+// File: /home/arun/PROJECT/app/auth/signin/page.tsx
 import * as entry from '../../../../../app/auth/signin/page.js'
 import type { ResolvingMetadata } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
