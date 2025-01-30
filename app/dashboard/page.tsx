@@ -3,9 +3,26 @@
 import { useRouter } from "next/navigation";
 import { FaSeedling, FaFlask, FaSignOutAlt } from "react-icons/fa";
 import { signOut } from "next-auth/react";
+import { auth } from "@/app/lib/firebase";
+import { signOut as firebaseSignOut } from "firebase/auth";
 
 export default function Dashboard() {
   const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+      // First navigate to home
+      router.push("/");
+      // Then sign out from NextAuth without redirect
+      await signOut({
+        redirect: false,
+      });
+    } catch (error) {
+      console.error("Sign out error:", error);
+      router.push("/");
+    }
+  };
 
   return (
     <div
@@ -16,7 +33,7 @@ export default function Dashboard() {
       }}
     >
       <button
-        onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+        onClick={handleSignOut}
         style={{
           position: "absolute",
           top: "20px",

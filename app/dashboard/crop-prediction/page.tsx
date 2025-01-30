@@ -4,16 +4,49 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaArrowLeft } from "react-icons/fa";
 
+interface PredictionResult {
+  crop: string;
+  yield: number;
+  confidence: number;
+}
+
 export default function CropPrediction() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [results, setResults] = useState<PredictionResult[]>([]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    // Add your prediction logic here
-    setLoading(false);
+
+    const formData = new FormData(e.currentTarget);
+    try {
+      const response = await fetch("/api/predict-yield", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nitrogen: formData.get("nitrogen"),
+          phosphorus: formData.get("phosphorus"),
+          potassium: formData.get("potassium"),
+          temperature: formData.get("temperature"),
+          humidity: formData.get("humidity"),
+          ph: formData.get("ph"),
+          rainfall: formData.get("rainfall"),
+          location: formData.get("location"),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setResults(data.predictions);
+      }
+    } catch (error) {
+      console.error("Prediction error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -73,17 +106,16 @@ export default function CropPrediction() {
             Crop Yield Prediction
           </h1>
 
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "grid", gap: "20px" }}
-          >
+          <form onSubmit={handleSubmit}>
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
                 gap: "20px",
+                marginBottom: "20px",
               }}
             >
+              {/* Soil Nutrients */}
               <div>
                 <label
                   style={{
@@ -92,67 +124,85 @@ export default function CropPrediction() {
                     color: "#4a5568",
                   }}
                 >
-                  Soil Type
-                </label>
-                <select
-                  required
-                  name="soilType"
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "4px",
-                  }}
-                >
-                  <option value="">Select soil type</option>
-                  <option value="loamy">Loamy</option>
-                  <option value="sandy">Sandy</option>
-                  <option value="clay">Clay</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    color: "#4a5568",
-                  }}
-                >
-                  Crop Type
-                </label>
-                <select
-                  required
-                  name="cropType"
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "4px",
-                  }}
-                >
-                  <option value="">Select crop type</option>
-                  <option value="rice">Rice</option>
-                  <option value="wheat">Wheat</option>
-                  <option value="maize">Maize</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    color: "#4a5568",
-                  }}
-                >
-                  Area (in acres)
+                  Nitrogen (N) mg/kg
                 </label>
                 <input
                   type="number"
+                  name="nitrogen"
                   required
-                  name="area"
-                  min="0"
+                  step="0.01"
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4a5568",
+                  }}
+                >
+                  Phosphorus (P) mg/kg
+                </label>
+                <input
+                  type="number"
+                  name="phosphorus"
+                  required
+                  step="0.01"
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4a5568",
+                  }}
+                >
+                  Potassium (K) mg/kg
+                </label>
+                <input
+                  type="number"
+                  name="potassium"
+                  required
+                  step="0.01"
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                  }}
+                />
+              </div>
+
+              {/* Environmental Factors */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4a5568",
+                  }}
+                >
+                  Temperature (°C)
+                </label>
+                <input
+                  type="number"
+                  name="temperature"
+                  required
                   step="0.1"
                   style={{
                     width: "100%",
@@ -171,23 +221,94 @@ export default function CropPrediction() {
                     color: "#4a5568",
                   }}
                 >
-                  Season
+                  Humidity (%)
                 </label>
-                <select
+                <input
+                  type="number"
+                  name="humidity"
                   required
-                  name="season"
+                  min="0"
+                  max="100"
                   style={{
                     width: "100%",
                     padding: "8px",
                     border: "1px solid #e2e8f0",
                     borderRadius: "4px",
                   }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4a5568",
+                  }}
                 >
-                  <option value="">Select season</option>
-                  <option value="kharif">Kharif</option>
-                  <option value="rabi">Rabi</option>
-                  <option value="zaid">Zaid</option>
-                </select>
+                  pH Level
+                </label>
+                <input
+                  type="number"
+                  name="ph"
+                  required
+                  step="0.1"
+                  min="0"
+                  max="14"
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4a5568",
+                  }}
+                >
+                  Rainfall (mm)
+                </label>
+                <input
+                  type="number"
+                  name="rainfall"
+                  required
+                  step="0.1"
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    color: "#4a5568",
+                  }}
+                >
+                  Location/Region
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                  }}
+                />
               </div>
             </div>
 
@@ -195,6 +316,7 @@ export default function CropPrediction() {
               type="submit"
               disabled={loading}
               style={{
+                width: "100%",
                 padding: "12px",
                 backgroundColor: "#48bb78",
                 color: "white",
@@ -208,20 +330,48 @@ export default function CropPrediction() {
             </button>
           </form>
 
-          {result && (
+          {results.length > 0 && (
             <div
               style={{
                 marginTop: "24px",
-                padding: "16px",
+                padding: "20px",
                 backgroundColor: "#f0fff4",
-                borderRadius: "4px",
-                borderLeft: "4px solid #48bb78",
+                borderRadius: "8px",
+                border: "1px solid #48bb78",
               }}
             >
-              <h3 style={{ color: "#2f855a", marginBottom: "8px" }}>
-                Predicted Yield
+              <h3
+                style={{
+                  color: "#2f855a",
+                  marginBottom: "16px",
+                  fontSize: "18px",
+                }}
+              >
+                Predicted Yields
               </h3>
-              <p style={{ color: "#2d3748" }}>{result}</p>
+              <div style={{ display: "grid", gap: "12px" }}>
+                {results.map((result, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "12px",
+                      backgroundColor: "white",
+                      borderRadius: "4px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    }}
+                  >
+                    <div style={{ fontWeight: "500", color: "#2d3748" }}>
+                      {result.crop}
+                    </div>
+                    <div style={{ color: "#4a5568" }}>
+                      Predicted Yield: {result.yield.toFixed(2)} tons/hectare
+                    </div>
+                    <div style={{ color: "#718096", fontSize: "0.875rem" }}>
+                      Confidence: {(result.confidence * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -46,24 +46,33 @@ export default function SignInForm() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
-      // Create user in your MongoDB if they don't exist
+      if (!user.email) {
+        setError("No email found from Google account");
+        return;
+      }
+
+      // Create/verify user in your MongoDB
       const res = await fetch("/api/auth/google", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: user.displayName,
+          name: user.displayName || user.email.split("@")[0],
           email: user.email,
         }),
       });
 
-      if (res.ok) {
-        router.push("/dashboard");
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        router.replace("/dashboard");
+      } else {
+        setError(data.message || "Failed to authenticate");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google sign in error:", error);
-      setError("Failed to sign in with Google");
+      setError(error.message || "Failed to sign in with Google");
     }
   };
 
